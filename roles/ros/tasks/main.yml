@@ -1,0 +1,51 @@
+---
+- name: Add ROS 2 gpg keys
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/ros/rosdistro/master/ros.key
+    dest: /usr/share/keyrings/ros-archive-keyring.gpg
+    checksum: "sha256:3a4c8d59e3a0fbb2acf338994b6102c5baa17071c4cc97f520b482a697f8a4fe"
+    mode: "0644"
+  become: true
+
+- name: Add ROS 2 apt repository
+  ansible.builtin.apt_repository:
+    repo: >
+      deb
+      [signed-by=/usr/share/keyrings/ros-archive-keyring.gpg]
+      http://packages.ros.org/ros2/ubuntu {{ ansible_lsb.codename }} main
+    filename: 'ros2-latest'
+    update-cache: true
+    state: present
+  become: true
+
+- name: Install ROS 2
+  ansible.builtin.apt:
+    state: present
+    name:
+      - ros-{{ item }}-{{ ros_metapackage }}
+      - python3-argcomplete
+      - ros-dev-tools
+  with_items:
+    - rolling
+  become: true
+
+- name: Install rosdep
+  ansible.builtin.apt:
+    state: present
+    name:
+      - python3-rosdep
+  become: true
+
+- name: Check if rosdep needs to be initialized
+  ansible.builtin.stat:
+    path: /etc/ros/rosdep/sources.list.d/20-default.list
+  register: stat_result
+
+- name: Init rosdep
+  ansible.builtin.shell:
+    cmd: rosdep init
+    executable: /bin/bash
+  changed_when: true
+  when: not stat_result.stat.exists
+  notify: Rosdep update
+  become: true

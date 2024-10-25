@@ -1,0 +1,6 @@
+---
+- name: Rosdep update
+  ansible.builtin.shell:
+    cmd: rosdep update
+    executable: /bin/bash
+  changed_when: false
